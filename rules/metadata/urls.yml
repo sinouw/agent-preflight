@@ -1,0 +1,66 @@
+# Endpoints embedded in metadata or code.
+rules:
+  - id: PF-URL-001
+    title: URL, webhook or IP address in tool metadata
+    severity: medium
+    layer: metadata
+    scope: [tool-description, param-description]
+    description: >-
+      Tool descriptions rarely need to contain endpoints. A URL or IP in a description can
+      be an exfiltration target that the model is told to send data to.
+    remediation: Check whether the endpoint is documentation for the tool or a destination for data.
+    tags: [exfiltration]
+    match:
+      type: regex
+      patterns:
+        - 'https?://[^\s"''<>)\]]+'
+        - '(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?(?!\w|\.\d)'
+        - '\bwebhooks?\b'
+
+  - id: PF-URL-002
+    title: Known exfiltration or tunnelling service
+    severity: high
+    layer: metadata
+    scope:
+      [
+        tool-description,
+        param-description,
+        skill,
+        agent,
+        command,
+        plugin-manifest,
+        hook-command,
+        mcp-config,
+        package-script,
+        source,
+        text,
+      ]
+    description: >-
+      References a request-capture, tunnelling, paste or chat-webhook service that attackers
+      commonly use to receive stolen data.
+    remediation: Find out what is sent to this service. Legitimate packages rarely hardcode these hosts.
+    tags: [exfiltration]
+    match:
+      type: regex
+      patterns:
+        - '\b(webhook\.site|requestbin\.(com|net)|pipedream\.net|[\w-]+\.ngrok(-free)?\.(io|app|dev)|trycloudflare\.com|interact\.sh|oast\.(fun|live|me|online|pro|site)|burpcollaborator\.net|canarytokens\.com|beeceptor\.com|hookbin\.com|pastebin\.com/api|transfer\.sh)\b'
+        - 'discord(app)?\.com/api/webhooks/'
+        - 'hooks\.slack\.com/services/'
+        - 'api\.telegram\.org/bot'
+
+  - id: PF-URL-003
+    title: Hardcoded IP-address URL
+    severity: medium
+    layer: source
+    scope: [hook-command, mcp-config, package-script, source, skill, agent, command]
+    description: >-
+      A URL that points at a raw public IP address instead of a hostname. This is typical of
+      command-and-control and drop servers.
+    remediation: Identify who operates the address and why it is not a named host.
+    tags: [exfiltration]
+    match:
+      type: regex
+      patterns:
+        - '\b(https?|wss?|ftp)://(?:\d{1,3}\.){3}\d{1,3}\b'
+      exclude:
+        - '://(127\.|10\.|0\.0\.0\.0|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)'

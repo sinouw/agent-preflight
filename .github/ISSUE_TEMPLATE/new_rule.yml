@@ -1,0 +1,26 @@
+name: New rule proposal
+description: Suggest a new detection.
+labels: [rules, enhancement]
+body:
+  - type: textarea
+    id: threat
+    attributes:
+      label: Threat
+      description: What attack does this catch? Link write-ups or advisories if you have them.
+    validations:
+      required: true
+  - type: textarea
+    id: positive
+    attributes:
+      label: Example that should fire (inert)
+    validations:
+      required: true
+  - type: textarea
+    id: negative
+    attributes:
+      label: Similar but harmless example that must not fire
+  - type: textarea
+    id: draft
+    attributes:
+      label: Draft rule (optional)
+      render: yaml

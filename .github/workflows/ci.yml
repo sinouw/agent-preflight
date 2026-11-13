@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+      - name: Malicious fixtures are flagged
+        run: |
+          set +e
+          node dist/cli.js scan fixtures/malicious
+          test $? -eq 1
+      - name: Clean fixtures pass
+        run: node dist/cli.js scan fixtures/clean
+      - name: Self-scan
+        run: node dist/cli.js scan .
+
+  action:
+    name: Action smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan clean fixtures with the local action
+        uses: ./
+        with:
+          target: fixtures/clean
+          upload-sarif: 'false'
+      - name: Scan malicious fixtures without failing
+        id: bad
+        uses: ./
+        with:
+          target: fixtures/malicious
+          fail-on: none
+          sarif-file: malicious.sarif
+          upload-sarif: 'false'
+      - name: SARIF has results
+        run: |
+          n=$(jq '.runs[0].results | length' malicious.sarif)
+          echo "results: $n"
+          test "$n" -gt 0

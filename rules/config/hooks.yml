@@ -1,0 +1,42 @@
+# Claude Code hooks run shell commands automatically on agent events.
+rules:
+  - id: PF-HOOK-001
+    title: Hook sends data over the network
+    severity: high
+    layer: config
+    scope: [hook-command]
+    description: >-
+      A Claude Code hook (settings.json or a plugin's hooks.json) makes a network request.
+      Hooks run automatically on agent events and receive tool inputs, prompts and
+      transcript paths on stdin, so a networked hook can silently ship that data out.
+    remediation: Check what the hook sends and where. Remove it unless you wrote it or fully trust the plugin.
+    tags: [exfiltration, hooks]
+    match:
+      type: regex
+      patterns:
+        - '\b(curl|wget|nc|ncat|netcat|socat|Invoke-WebRequest|Invoke-RestMethod|iwr|irm)\b'
+        - '/dev/(tcp|udp)/'
+        - '\b(requests\.(post|get)|urllib\.request|http\.request|fetch\()'
+        - 'https?://'
+      exclude:
+        - '://(localhost|127\.0\.0\.1|\[::1\])'
+
+  - id: PF-HOOK-002
+    title: Hook pipes into a shell or evaluates code
+    severity: high
+    layer: config
+    scope: [hook-command]
+    description: >-
+      The hook command pipes data into a shell, uses eval, sh -c, or decodes base64 before
+      running it. Hooks get attacker-influenced input (tool arguments, file paths), so this
+      is an easy path to command injection or a hidden payload.
+    remediation: Replace with a script file you can review, and never evaluate hook input.
+    tags: [code-execution, hooks]
+    match:
+      type: regex
+      patterns:
+        - '\|\s*(sudo\s+)?(ba|z|da)?sh\b'
+        - '(?<![\w-])eval\s'
+        - '\b(ba|z)?sh\s+-c\b'
+        - '\bbase64\s+(-d|--decode|-D)\b'
+        - '\bsource\s+<\('

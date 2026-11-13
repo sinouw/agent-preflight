@@ -1,0 +1,14 @@
+# Self-scan exclusions for this repository.
+# Deliberately malicious test material:
+fixtures/**
+test/**
+# Rule definitions and docs quote the patterns they detect:
+rules/**
+docs/**
+README.md
+CHANGELOG.md
+# Build output mirrors src/:
+dist/**
+# --installed discovery reads MCP and Claude Code config files by design (read-only):
+PF-SRC-001 src/inputs/installed.ts
+PF-SRC-001 src/extract/index.ts

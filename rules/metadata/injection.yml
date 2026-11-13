@@ -1,0 +1,82 @@
+# Prompt-injection phrases in tool metadata, skills, agents, commands and plugin manifests.
+rules:
+  - id: PF-INJ-001
+    title: Instruction-override phrase
+    severity: critical
+    layer: metadata
+    scope: [tool-description, param-description, skill, agent, command, plugin-manifest]
+    description: >-
+      The text tries to override the model's existing instructions ("ignore previous
+      instructions", "you are now ..."). Tool and skill metadata is read by the model as
+      trusted context, so this is a classic tool-poisoning payload.
+    remediation: >-
+      Do not install. Legitimate tool descriptions describe what the tool does; they never
+      ask the model to discard its instructions.
+    tags: [prompt-injection]
+    match:
+      type: regex
+      patterns:
+        - '\b(ignore|disregard|forget|override)\s+(all\s+|any\s+)?(of\s+)?(the\s+|your\s+)?(previous|prior|above|earlier|preceding|existing|system|other)\s+(instructions?|prompts?|rules|directions|messages|guidelines|context)'
+        - '\bforget\s+(everything|all)\s+(you|that|above)'
+        - '\byou\s+are\s+now\s+(a|an|in|the)\b'
+        - '\bnew\s+(system\s+)?instructions?\s*:'
+
+  - id: PF-INJ-002
+    title: Concealment instruction
+    severity: critical
+    layer: metadata
+    scope: [tool-description, param-description, skill, agent, command, plugin-manifest]
+    description: >-
+      The text tells the model to hide something from the user ("do not tell the user",
+      "without informing the user", "silently send ..."). Concealment from the user has no
+      legitimate place in tool metadata.
+    remediation: Do not install. Report the package to its registry.
+    tags: [prompt-injection]
+    match:
+      type: regex
+      patterns:
+        - '\b(do\s+not|don''t|never|must\s+not)\s+(tell|mention|inform|reveal|disclose|show|notify|alert|warn)\s+(this\s+|it\s+|anything\s+|about\s+this\s+)?(to\s+)?(the\s+)?user'
+        - '\bwithout\s+(telling|informing|notifying|alerting|asking|warning)\s+(the\s+)?user'
+        - '\b(the\s+)?user\s+(must|should|need|does)\s*(not|n''t)\s+(know|see|notice|be\s+(told|informed|aware))'
+        - '\b(keep|make)\s+(this|it)\s+(a\s+)?(secret|hidden|confidential)\s+from'
+        - '\bsilently\s+(send|upload|read|forward|include|attach|copy|post|transmit)'
+
+  - id: PF-INJ-003
+    title: Forced call ordering or precedence claim
+    severity: high
+    layer: metadata
+    scope: [tool-description, param-description, skill, agent, command, plugin-manifest]
+    description: >-
+      The text tries to force the model to call this tool before any other, or claims to
+      override other instructions or tools. Poisoned tools use this to run on every request.
+    remediation: >-
+      Review why the tool needs to run first. Prefer tools whose descriptions only state
+      what they do.
+    tags: [prompt-injection]
+    match:
+      type: regex
+      patterns:
+        - '\bbefore\s+(using|calling|invoking|running)\s+(any|other|another|this\s+or\s+any)\s+(other\s+)?tools?'
+        - '\b(always|must)\s+(first\s+)?(call|use|invoke|run)\s+this\s+tool\s+(first|before)'
+        - '\b(must|should)\s+(always\s+)?be\s+(called|invoked|used|run)\s+(first|before)'
+        - '\bthis\s+(tool|instruction|rule)s?\s+(overrides?|supersedes?|takes\s+precedence|replaces?)'
+        - '\b(highest|top)[\s-]priority\s+(instruction|rule|directive)'
+
+  - id: PF-INJ-004
+    title: System-prompt impersonation markup
+    severity: high
+    layer: metadata
+    scope: [tool-description, param-description, skill, agent, command, plugin-manifest]
+    description: >-
+      The text contains markup that imitates system or priority messages, such as
+      <IMPORTANT>, <SYSTEM>, [SYSTEM] or chat-template tokens. These tags are used to make
+      injected instructions look authoritative.
+    remediation: Treat the description as hostile and read it in full before installing.
+    tags: [prompt-injection]
+    match:
+      type: regex
+      patterns:
+        - '<\s*/?\s*(important|system|system[-_ ]?prompt|instructions?|admin|assistant|secret|hidden|critical)\s*>'
+        - '\[\s*/?\s*(system|admin|important|instructions?)\s*\]'
+        - '<\|\s*(im_start|im_end|system|endoftext)\s*\|>'
+        - '(^|\n)\s*#{1,6}\s*system\s*(prompt|message)?\s*(\n|$)'

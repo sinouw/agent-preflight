@@ -1,0 +1,145 @@
+# Invisible characters, encoded blobs and oversized descriptions.
+rules:
+  - id: PF-UNI-001
+    title: Zero-width or invisible characters
+    severity: high
+    layer: metadata
+    scope:
+      [
+        tool-description,
+        param-description,
+        skill,
+        agent,
+        command,
+        plugin-manifest,
+        hook-command,
+        mcp-config,
+        package-script,
+        source,
+        text,
+      ]
+    description: >-
+      Zero-width spaces/joiners, word joiners, soft hyphens and similar characters are
+      invisible in most UIs but are read by the model. They are used to hide instructions or
+      smuggle data past human review.
+    remediation: >-
+      Inspect the file with a hex viewer or `cat -A`. Remove the characters, or do not
+      install if you did not author them.
+    tags: [hidden-unicode]
+    match:
+      type: codepoints
+      ranges: ['00AD', '180E', '200B-200D', '2060-2064', 'FEFF']
+      allowLeading: ['FEFF']
+
+  - id: PF-UNI-002
+    title: Bidirectional control characters
+    severity: critical
+    layer: metadata
+    scope:
+      [
+        tool-description,
+        param-description,
+        skill,
+        agent,
+        command,
+        plugin-manifest,
+        hook-command,
+        mcp-config,
+        package-script,
+        source,
+        text,
+      ]
+    description: >-
+      Bidi override / isolate characters reorder how text is displayed, so what a reviewer
+      sees differs from what the model or interpreter reads ("Trojan Source", CVE-2021-42574).
+    remediation: Remove the characters. Treat any package that ships them in code or metadata as hostile.
+    tags: [hidden-unicode, trojan-source]
+    match:
+      type: codepoints
+      ranges: ['061C', '200E-200F', '202A-202E', '2066-2069']
+
+  - id: PF-UNI-003
+    title: Unicode tag characters
+    severity: critical
+    layer: metadata
+    scope:
+      [
+        tool-description,
+        param-description,
+        skill,
+        agent,
+        command,
+        plugin-manifest,
+        hook-command,
+        mcp-config,
+        package-script,
+        source,
+        text,
+      ]
+    description: >-
+      Characters in the Tags block (U+E0000–U+E007F) mirror ASCII but render as nothing.
+      Language models still read them, which makes them a known channel for invisible
+      prompt injection ("ASCII smuggling").
+    remediation: Do not install. There is no legitimate reason for tag characters in tool metadata or code.
+    tags: [hidden-unicode, ascii-smuggling]
+    match:
+      type: codepoints
+      ranges: ['E0000-E007F']
+
+  - id: PF-UNI-004
+    title: Variation-selector smuggling
+    severity: high
+    layer: metadata
+    scope:
+      [
+        tool-description,
+        param-description,
+        skill,
+        agent,
+        command,
+        plugin-manifest,
+        hook-command,
+        source,
+        text,
+      ]
+    description: >-
+      Supplementary variation selectors (U+E0100–U+E01EF) can encode arbitrary bytes after a
+      visible character and are used to hide payloads inside innocent-looking text.
+    remediation: Remove the characters and review where they came from.
+    tags: [hidden-unicode]
+    match:
+      type: codepoints
+      ranges: ['E0100-E01EF']
+
+  - id: PF-OBF-001
+    title: Encoded blob in metadata
+    severity: medium
+    layer: metadata
+    scope: [tool-description, param-description, skill, agent, command, plugin-manifest]
+    description: >-
+      A long base64, hex or escaped-byte sequence inside human-readable metadata. Encoded
+      payloads hide instructions from reviewers while models can often decode them.
+    remediation: Decode the blob and review it. Metadata should be plain prose.
+    tags: [obfuscation]
+    match:
+      type: regex
+      flags: ''
+      patterns:
+        - '(?<![A-Za-z0-9+/=_-])[A-Za-z0-9+/]{60,}={0,2}(?![A-Za-z0-9+/=_-])'
+        - '(?<![0-9a-fA-F])(?:[0-9a-fA-F]{2}){48,}(?![0-9a-fA-F])'
+        - '(?:\\x[0-9a-fA-F]{2}){8,}'
+        - '(?:\\u[0-9a-fA-F]{4}){6,}'
+
+  - id: PF-LEN-001
+    title: Unusually long tool or parameter description
+    severity: low
+    layer: metadata
+    scope: [tool-description, param-description]
+    description: >-
+      Descriptions far longer than needed to explain a tool leave room for buried
+      instructions and are rarely read in full by humans.
+    remediation: Read the whole description before installing; ask the author to shorten it.
+    tags: [hygiene]
+    match:
+      type: max-length
+      max: 1000

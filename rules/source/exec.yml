@@ -1,0 +1,85 @@
+# Dynamic code execution and download-and-run patterns.
+rules:
+  - id: PF-SRC-004
+    title: Dynamic code evaluation
+    severity: high
+    layer: source
+    scope: [source]
+    description: >-
+      eval, new Function, vm.run* or Python exec on non-literal input lets the package run
+      code that is not visible in its source, for example a payload fetched at runtime.
+    remediation: Find where the evaluated string comes from. Avoid packages that evaluate remote or decoded content.
+    tags: [code-execution]
+    match:
+      type: regex
+      patterns:
+        - '(?<![\w$.])eval\s*\(\s*(?![''"`][^''"`]*[''"`]\s*\))[^)\s]'
+        - '\bnew\s+Function\s*\('
+        - '\bvm\.(runInNewContext|runInThisContext|runInContext|compileFunction)\s*\('
+        - '(?<![\w.])exec\s*\(\s*(compile|base64|codecs|bytes|marshal|zlib|__import__|requests|urllib)\b'
+
+  - id: PF-SRC-005
+    title: Shell command built from dynamic input
+    severity: high
+    layer: source
+    scope: [source]
+    description: >-
+      A shell command is assembled from variables or template interpolation, or run with
+      shell=True. If any part comes from tool arguments the model controls, this is command
+      injection.
+    remediation: Use execFile/spawn with an argument array and no shell, and validate inputs.
+    tags: [code-execution, command-injection]
+    match:
+      type: regex
+      patterns:
+        - '(?:(?<![\w$.])|(?<=\b(?:child_process|childProcess|cp)\.))(?:exec|execSync)\s*\(\s*(?:`[^`]*\$\{|[A-Za-z_$][\w$.]*\s*[,)]|[''"][^''"]*[''"]\s*\+)'
+        - '\bspawn(Sync)?\s*\([^)]*\bshell\s*:\s*true'
+        - '\bsubprocess\.(run|call|Popen|check_output|check_call)\s*\([^)]*shell\s*=\s*True'
+        - '\bos\.(system|popen)\s*\(\s*(?![''"][^''"]*[''"]\s*\))[^)\s]'
+
+  - id: PF-SRC-006
+    title: Download piped into an interpreter
+    severity: critical
+    layer: source
+    scope: [source, hook-command, package-script, mcp-config, skill, agent, command]
+    description: >-
+      Content fetched from the network is piped straight into a shell or interpreter
+      (`curl ... | sh`). Whatever the server returns at that moment gets executed, and can
+      change at any time.
+    remediation: Download, pin by checksum and review scripts before running them. Do not install packages that do this implicitly.
+    tags: [code-execution, supply-chain]
+    match:
+      type: regex
+      patterns:
+        - '\b(curl|wget|iwr|Invoke-WebRequest)\b[^\n|;&]*\|\s*(sudo\s+)?(ba|z|da|k)?sh\b'
+        - '\b(curl|wget)\b[^\n|;&]*\|\s*(sudo\s+)?(python3?|node|perl|ruby)\b'
+        - '\b(ba|z)?sh\s+-c\s+["'']?\$\(\s*(curl|wget)'
+        - '\b(ba|z)?sh\s+<\(\s*(curl|wget)'
+        - '\b(iex|Invoke-Expression)\b.*\b(iwr|Invoke-WebRequest|DownloadString)'
+
+  - id: PF-SRC-007
+    title: Decoded payload executed
+    severity: high
+    layer: source
+    scope: [source, hook-command, package-script]
+    description: >-
+      The same file decodes base64/hex/char-code data and executes code or shell commands.
+      This combination is the usual way to hide a payload from reviewers and scanners.
+    remediation: Decode the data offline and review it before trusting the package.
+    tags: [obfuscation, code-execution]
+    match:
+      type: all
+      groups:
+        - - '\batob\s*\('
+          - 'Buffer\.from\([^)]*[''"](base64|hex)[''"]'
+          - '\bbase64\.b64decode\b'
+          - '\bcodecs\.decode\b'
+          - '\bbase64\s+(-d|--decode|-D)\b'
+          - 'String\.fromCharCode\s*\('
+        - - '(?<![\w$.])eval\s*\('
+          - '\bnew\s+Function\s*\('
+          - '(?<![\w.])exec\s*\('
+          - '\bexecSync\s*\('
+          - '\bos\.system\s*\('
+          - '\bsubprocess\.\w+\s*\('
+          - '\|\s*(ba|z)?sh\b'

@@ -1,0 +1,40 @@
+# Parameters that serve as covert exfiltration channels.
+rules:
+  - id: PF-PRM-001
+    title: Suspicious parameter name
+    severity: medium
+    layer: metadata
+    scope: [param-name]
+    description: >-
+      Parameters such as `sidenote`, `context`, `conversation_history`, `system_prompt` or
+      `file_contents` are common side channels: a poisoned description asks the model to
+      fill them with private data, which is then sent to the server.
+    remediation: >-
+      Check what the tool's description asks the model to put in this parameter and whether
+      the tool needs it.
+    tags: [exfiltration]
+    match:
+      type: regex
+      target: name
+      patterns:
+        - '^(notes?|side_?notes?|context|extra_?context|additional_?context|conversation(_?history)?|chat_?history|history|transcript|system_?prompt|instructions|secrets?|api_?keys?|passwords?|credentials?|file_?contents?|ssh_?keys?|private_?keys?|env|environment|env_?vars?|memory|debug_?info|feedback)$'
+
+  - id: PF-PRM-002
+    title: Metadata requests conversation, system prompt or secrets
+    severity: high
+    layer: metadata
+    scope: [tool-description, param-description]
+    description: >-
+      The description asks the model to supply the conversation history, its system prompt,
+      credentials or the contents of sensitive files. This is the core of most MCP data
+      exfiltration attacks.
+    remediation: Do not install. No legitimate tool needs your system prompt or private keys as an argument.
+    tags: [exfiltration]
+    match:
+      type: regex
+      patterns:
+        - '\b(entire|full|whole|complete|all|previous|prior)\s+(conversation|chat|message|dialog(ue)?)s?(\s+history)?\b'
+        - '\b(conversation|chat)\s+(history|log|transcript)'
+        - '\bsystem\s+prompt'
+        - '\b(contents?\s+of|read|include|pass|provide|attach|paste|cat)\s+[^.\n]{0,40}(~/|\.ssh|id_rsa|\.env\b|\.aws|credentials|mcp\.json|_config\.json|private\s+key)'
+        - '\b(include|provide|pass|paste|put|insert|add|send)\s+(the\s+|your\s+|any\s+|all\s+)?(user''?s\s+)?(api[\s_-]?keys?|access\s+tokens?|secret\s+keys?|secrets|passwords?|credentials|environment\s+variables)'

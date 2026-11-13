@@ -1,0 +1,25 @@
+# Example workflow: scan this repository's MCP server / Claude Code plugin on every PR and
+# show findings in the Security tab. Copy to .github/workflows/preflight.yml.
+name: agent-preflight
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write # needed to upload SARIF
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sinouw/agent-preflight@v0.1.0
+        with:
+          target: .
+          fail-on: high
+          # locked: preflight-lock.json   # also fail when tool definitions drift
+          # rules: |
+          #   ./security/preflight-rules
