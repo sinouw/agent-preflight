@@ -4,9 +4,16 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Major upgrades are done by hand: they can drop Node 20 (which the package supports) or
+    # break the toolchain (for example TypeScript majors before typescript-eslint supports them).
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
       dev-dependencies:
         dependency-type: development
+      runtime-dependencies:
+        dependency-type: production
     open-pull-requests-limit: 5
 
   - package-ecosystem: github-actions
