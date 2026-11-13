@@ -1,0 +1,29 @@
+name: False positive / false negative
+description: A rule fired on something harmless, or missed something it should catch.
+labels: [rules]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options: [False positive, False negative]
+    validations:
+      required: true
+  - type: input
+    id: rule
+    attributes:
+      label: Rule id
+      placeholder: PF-SRC-002
+  - type: textarea
+    id: sample
+    attributes:
+      label: Sample
+      description: >-
+        The smallest snippet that shows the problem. For false negatives, make the sample
+        inert: no working payloads, no real endpoints (use example.invalid).
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why is this wrong?

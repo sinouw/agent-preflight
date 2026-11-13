@@ -1,0 +1,37 @@
+# Lockfile drift (`preflight verify`, `preflight scan --locked`).
+rules:
+  - id: PF-DRIFT-001
+    title: Definition changed since lock
+    severity: high
+    layer: drift
+    description: >-
+      A tool, skill, hook, agent, command or MCP server definition no longer matches the
+      SHA-256 pinned in preflight-lock.json. Silent definition changes after approval are
+      how rug-pull attacks work.
+    remediation: Review the diff (`preflight verify`). If the change is expected, re-run `preflight lock`.
+    tags: [rug-pull]
+    match:
+      type: drift
+      change: changed
+
+  - id: PF-DRIFT-002
+    title: Definition added since lock
+    severity: medium
+    layer: drift
+    description: A definition exists that was not present when preflight-lock.json was written.
+    remediation: Review the new definition. If expected, re-run `preflight lock`.
+    tags: [rug-pull]
+    match:
+      type: drift
+      change: added
+
+  - id: PF-DRIFT-003
+    title: Definition removed since lock
+    severity: low
+    layer: drift
+    description: A definition pinned in preflight-lock.json no longer exists.
+    remediation: If expected, re-run `preflight lock`.
+    tags: [rug-pull]
+    match:
+      type: drift
+      change: removed

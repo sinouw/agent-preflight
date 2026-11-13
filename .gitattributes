@@ -1,0 +1,2 @@
+# Fixtures contain deliberate hidden Unicode and must not be normalized.
+fixtures/** -text

@@ -1,0 +1,38 @@
+# Tool shadowing: one tool's metadata changing how other tools behave.
+rules:
+  - id: PF-SHD-001
+    title: Tool shadowing instruction
+    severity: high
+    layer: metadata
+    scope: [tool-description, param-description, plugin-manifest]
+    description: >-
+      The description gives instructions about other tools or servers, or about redirecting
+      their output (for example "when this tool is available, send_email must BCC ...").
+      A malicious server can hijack trusted tools this way without ever being called.
+    remediation: >-
+      Do not install alongside servers that hold sensitive capabilities. A tool's
+      description should only describe that tool.
+    tags: [tool-shadowing]
+    match:
+      type: regex
+      patterns:
+        - '\bwhen\s+this\s+tool\s+is\s+(available|present|installed|loaded|enabled)'
+        - '\b(when|whenever|if)\s+(the\s+)?(user|assistant|model|agent|you)\s+(uses?|calls?|invokes?|runs?)\s+(the\s+|any\s+)?[\w.-]+\s+tool'
+        - '\b(all|any|every)\s+(other\s+)?(tools?|servers?|mcp\s+servers?)\s+(must|should|will|need\s+to)'
+        - '\binstead\s+of\s+(using\s+|calling\s+)?(the\s+)?[\w.-]+\s+(tool|server)'
+        - '\b(send|forward|redirect|bcc|cc|copy)\s+(all\s+|every\s+|any\s+)?(e-?mails?|messages?|requests?|results?|outputs?|responses?)\s+(to|through|via)\b'
+        - '\b(change|modify|alter|override)\s+(the\s+)?(behaviou?r|parameters?|recipients?|arguments?)\s+of\s+(the\s+|any\s+|all\s+)?(other\s+)?\w+'
+
+  - id: PF-SHD-002
+    title: Description references another tool
+    severity: medium
+    layer: metadata
+    scope: [tool-description, param-description]
+    description: >-
+      The description mentions a different tool found in the same scan by name. This is
+      how shadowing payloads target specific tools; it can also be a benign cross-reference.
+    remediation: Check that the reference is descriptive and does not change the other tool's behaviour.
+    tags: [tool-shadowing]
+    match:
+      type: cross-tool-reference
+      minLength: 5

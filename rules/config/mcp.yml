@@ -1,0 +1,33 @@
+# MCP server launch configuration (claude_desktop_config.json, .mcp.json, plugin.json).
+rules:
+  - id: PF-MCP-001
+    title: Unpinned package in MCP server command
+    severity: low
+    layer: config
+    scope: [mcp-config]
+    description: >-
+      The server is launched with npx/bunx/uvx without a pinned version, so every start may
+      download a different release. A compromised or re-published version would run
+      automatically (rug pull).
+    remediation: Pin an exact version (e.g. `npx -y some-server@1.4.2`) and use `preflight lock` to detect drift.
+    tags: [supply-chain]
+    match:
+      type: regex
+      patterns:
+        - '\b(npx|bunx)\s+(?:(?:-y|--yes|-q|--quiet)\s+)*(?!-)(@[\w.-]+/)?[\w.-]+(?:@(?:latest|next))?(?=\s|$)'
+        - '\buvx\s+(?:--from\s+\S+\s+)?(?!-)[\w.-]+(?=\s|$)'
+
+  - id: PF-MCP-002
+    title: Remote MCP server over plain HTTP
+    severity: medium
+    layer: config
+    scope: [mcp-config]
+    description: >-
+      The server is reached over unencrypted http://. Anyone on the network path can read
+      tool calls or swap the tool definitions.
+    remediation: Use an https:// endpoint.
+    tags: [transport]
+    match:
+      type: regex
+      patterns:
+        - '(?<![\w])http://(?!localhost|127\.0\.0\.1|\[::1\])'

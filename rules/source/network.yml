@@ -1,0 +1,51 @@
+# Outbound network traffic.
+rules:
+  - id: PF-SRC-002
+    title: Outbound request to a hardcoded host
+    severity: low
+    layer: source
+    scope: [source]
+    description: >-
+      The code sends a request to a hardcoded remote URL. That is normal for API clients,
+      but worth knowing for a tool that claims to work locally.
+    remediation: Check that the host matches the tool's stated purpose.
+    tags: [network]
+    match:
+      type: regex
+      patterns:
+        - '\b(fetch|axios(\.(get|post|put|patch|request))?|got(\.(get|post|put))?|ky(\.(get|post))?|superagent\.(get|post)|needle\.(get|post))\s*\(\s*[''"`]https?://'
+        - '\b(requests|httpx|session|client)\.(get|post|put|patch|request)\s*\(\s*[rf]?[''"]https?://'
+        - '\burllib\.request\.(urlopen|Request)\s*\(\s*[''"]https?://'
+        - '\bhttps?\.(request|get)\s*\(\s*[''"`]https?://'
+        - '\bnew\s+WebSocket\s*\(\s*[''"`]wss?://'
+        - '\b(curl|wget)\s+[^\n|;]*https?://'
+      exclude:
+        - '://(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])'
+
+  - id: PF-SRC-003
+    title: Secret collection combined with outbound request
+    severity: critical
+    layer: source
+    scope: [source]
+    description: >-
+      The same file reads credentials, sensitive files or the whole environment AND sends a
+      request to a hardcoded remote host. This is the shape of a data-exfiltration payload.
+    remediation: Do not install. Read the file in full; report the package if the behaviour is undisclosed.
+    message: 'Collects secrets and sends a request to a hardcoded host: "{match}"'
+    tags: [exfiltration, credentials]
+    match:
+      type: all
+      groups:
+        - - '[''"`/~]\.ssh(/|\b)'
+          - '\bid_(rsa|ed25519|ecdsa)\b'
+          - '\.aws/(credentials|config)\b'
+          - '[''"`/]\.env(\.[\w-]+)?[''"`]'
+          - '[''"`/~]\.(claude|cursor)(/|[''"`])'
+          - 'claude_desktop_config\.json'
+          - 'JSON\.stringify\(\s*process\.env\s*\)'
+          - 'Object\.(entries|keys|values|assign)\(\s*(\{\s*\.\.\.)?process\.env\b'
+          - '\{\s*\.\.\.process\.env\s*\}'
+          - '\bdict\(\s*os\.environ\s*\)|os\.environ\.copy\(\)|json\.dumps\(\s*(dict\()?os\.environ'
+        - - 'https?://(?!localhost|127\.0\.0\.1|0\.0\.0\.0)[\w.-]+\.[a-z]{2,}'
+        - - '\b(fetch|axios(\.\w+)?|got(\.\w+)?|requests\.(post|get|put)|httpx\.(post|get|put)|urlopen|https?\.request)\s*\('
+          - '\b(curl|wget|nc)\s'

@@ -1,0 +1,20 @@
+rules:
+  - id: PF-PKG-001
+    title: Install-time lifecycle script
+    severity: medium
+    layer: config
+    scope: [package-script]
+    description: >-
+      package.json declares a script that npm runs automatically during install
+      (preinstall, install, postinstall, prepare, ...). Many supply-chain attacks live here,
+      because the code runs before you ever start the server.
+    remediation: >-
+      Read the script. Install with `npm install --ignore-scripts` if it is not needed, or
+      pin the version you reviewed.
+    message: 'Lifecycle script "{name}" runs automatically on install'
+    tags: [supply-chain]
+    match:
+      type: regex
+      target: name
+      patterns:
+        - '^(preinstall|install|postinstall|preuninstall|uninstall|postuninstall|prepare)$'

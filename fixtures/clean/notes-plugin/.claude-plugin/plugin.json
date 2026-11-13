@@ -1,0 +1,11 @@
+{
+  "name": "notes-plugin",
+  "version": "1.0.0",
+  "description": "Keeps a local notebook of decisions for the current project.",
+  "mcpServers": {
+    "notebook": {
+      "command": "npx",
+      "args": ["-y", "@example/notebook-server@1.2.3"]
+    }
+  }
+}

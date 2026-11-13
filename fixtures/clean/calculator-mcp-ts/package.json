@@ -1,0 +1,11 @@
+{
+  "name": "calculator-mcp",
+  "version": "1.2.0",
+  "description": "A small, well-behaved MCP server used as a clean test fixture.",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  }
+}

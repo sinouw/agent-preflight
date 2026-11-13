@@ -1,0 +1,97 @@
+name: agent-preflight
+description: Static security scan for MCP servers and Claude Code plugins, skills and hooks, with SARIF upload to code scanning.
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  target:
+    description: Directory, GitHub URL or npm package to scan.
+    default: '.'
+  fail-on:
+    description: Fail the step when a finding at or above this severity exists (critical, high, medium, low, info, none).
+    default: high
+  min-severity:
+    description: Only report findings at or above this severity.
+    default: ''
+  rules:
+    description: Extra rule-pack directories, one per line.
+    default: ''
+  locked:
+    description: Path to a preflight-lock.json to verify against (drift becomes findings).
+    default: ''
+  sarif-file:
+    description: Where to write the SARIF report.
+    default: agent-preflight.sarif
+  upload-sarif:
+    description: Upload the SARIF report to GitHub code scanning (needs `security-events write`; private repositories need GitHub Advanced Security).
+    default: 'true'
+  category:
+    description: Code scanning category, to keep several scans apart.
+    default: agent-preflight
+
+outputs:
+  sarif-file:
+    description: Path of the SARIF report.
+    value: ${{ steps.scan.outputs.sarif-file }}
+  exit-code:
+    description: 0 when the scan passed the threshold, 1 when it did not.
+    value: ${{ steps.scan.outputs.exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    - name: Build agent-preflight
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        npm ci --ignore-scripts --no-audit --no-fund
+        npm run build
+
+    - name: Scan
+      id: scan
+      shell: bash
+      env:
+        PF_CLI: ${{ github.action_path }}/dist/cli.js
+        PF_TARGET: ${{ inputs.target }}
+        PF_FAIL_ON: ${{ inputs.fail-on }}
+        PF_MIN_SEVERITY: ${{ inputs.min-severity }}
+        PF_RULES: ${{ inputs.rules }}
+        PF_LOCKED: ${{ inputs.locked }}
+        PF_SARIF: ${{ inputs.sarif-file }}
+      run: |
+        args=(scan "$PF_TARGET")
+        [ -n "$PF_MIN_SEVERITY" ] && args+=(--min-severity "$PF_MIN_SEVERITY")
+        [ -n "$PF_LOCKED" ] && args+=(--locked "$PF_LOCKED")
+        while IFS= read -r dir; do
+          [ -n "$dir" ] && args+=(--rules "$dir")
+        done <<< "$PF_RULES"
+
+        # Human-readable report in the job log.
+        node "$PF_CLI" "${args[@]}" --fail-on none
+
+        set +e
+        node "$PF_CLI" "${args[@]}" --format sarif --output "$PF_SARIF" --fail-on "$PF_FAIL_ON"
+        code=$?
+        set -e
+        if [ "$code" -ge 2 ]; then exit "$code"; fi
+        echo "sarif-file=$PF_SARIF" >> "$GITHUB_OUTPUT"
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+
+    - name: Upload SARIF
+      if: ${{ always() && inputs.upload-sarif == 'true' && steps.scan.outputs.sarif-file != '' }}
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.scan.outputs.sarif-file }}
+        category: ${{ inputs.category }}
+
+    - name: Enforce threshold
+      if: ${{ steps.scan.outputs.exit-code == '1' }}
+      shell: bash
+      run: |
+        echo "::error::agent-preflight found issues at or above '${{ inputs.fail-on }}'."
+        exit 1
