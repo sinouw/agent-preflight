@@ -19,6 +19,14 @@ beforeAll(() => {
 afterAll(() => rmSync(tmp, { recursive: true, force: true }));
 
 describe('CLI', () => {
+  it('reports the package.json version', async () => {
+    const { readFileSync } = await import('node:fs');
+    const pkg = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8')) as {
+      version: string;
+    };
+    const r = run(['--version']);
+    expect(r.stdout.trim()).toBe(pkg.version);
+  });
   it('exits 1 on malicious fixtures', () => {
     const r = run(['scan', path.join(FIXTURES, 'malicious')]);
     expect(r.status).toBe(1);

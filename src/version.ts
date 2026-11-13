@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
 
+const PACKAGE_NAMES = new Set(['@sinouw/agent-preflight', 'agent-preflight']);
+
 function readVersion(): string {
   for (const rel of ['../package.json', '../../package.json']) {
     try {
@@ -7,7 +9,7 @@ function readVersion(): string {
         name?: string;
         version?: string;
       };
-      if (pkg.name === 'agent-preflight' && pkg.version) return pkg.version;
+      if (pkg.name && PACKAGE_NAMES.has(pkg.name) && pkg.version) return pkg.version;
     } catch {
       // try next
     }

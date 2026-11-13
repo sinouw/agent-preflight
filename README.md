@@ -1,27 +1,79 @@
 # agent-preflight
 
+[![npm](https://img.shields.io/npm/v/@sinouw/agent-preflight?color=cb3837&logo=npm)](https://www.npmjs.com/package/@sinouw/agent-preflight)
+[![CI](https://github.com/sinouw/agent-preflight/actions/workflows/ci.yml/badge.svg)](https://github.com/sinouw/agent-preflight/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/sinouw/agent-preflight/blob/main/LICENSE)
+[![Node](https://img.shields.io/node/v/@sinouw/agent-preflight)](https://nodejs.org)
+
 **Scan before you install.** `agent-preflight` reads an MCP server, a Claude Code plugin, a
 skill or a hook and tells you whether it hides instructions for the model, smuggles invisible
 text, reaches for your credentials or phones home, before any of it runs on your machine.
+
+```bash
+npx @sinouw/agent-preflight scan https://github.com/owner/some-mcp-server
+```
+
+## Why
+
+An AI agent trusts the tool descriptions it is given. A tool that looks like a weather lookup
+can tell the model, in text the user never sees, to read `~/.ssh/id_rsa` and pass it along as
+a "sidenote". A plugin hook can run `curl … | sh` on every prompt. A server can ship clean
+definitions today and swap them after you approve it (a "rug pull"). These attacks live in
+plain text and config files, so most of them can be caught statically, before install.
 
 - **Purely static.** Nothing from the target is executed, imported, built or installed. npm
   packages are fetched as integrity-checked tarballs with no lifecycle scripts.
 - **No account, no network calls besides fetching the target.** Your tool descriptions are not
   sent to a third-party service.
+- **MCP servers and agent plugins.** Covers MCP servers (TS/JS, Python, JSON manifests) and
+  Claude Code plugins, skills, agents, commands and hooks.
 - **Rug-pull detection.** Lock today's tool definitions and fail CI when they change.
 - **YAML rules** you can read, extend and override; SARIF output for GitHub code scanning.
 
+## Contents
+
+- [Install](#install)
+- [Quickstart](#quickstart)
+- [Sample output](#sample-output)
+- [What it looks at](#what-it-looks-at)
+- [Rules](#rules)
+- [Output and exit codes](#output-and-exit-codes)
+- [Suppressing findings](#suppressing-findings)
+- [GitHub Action](#github-action)
+- [Library usage](#library-usage)
+- [How it compares](#how-it-compares)
+- [Limitations](#limitations)
+- [Roadmap](#roadmap)
+
+## Install
+
+Node 20 or newer. Run it without installing:
+
+```bash
+npx @sinouw/agent-preflight --help
+```
+
+Or install it globally, which gives you the `preflight` command:
+
+```bash
+npm install -g @sinouw/agent-preflight
+```
+
 ## Quickstart
 
-Node 20 or newer.
+A local folder:
 
 ```bash
 npx @sinouw/agent-preflight scan ./my-mcp-server
 ```
 
+A GitHub repository (downloaded as a tarball, nothing is run):
+
 ```bash
 npx @sinouw/agent-preflight scan https://github.com/owner/repo
 ```
+
+An npm package, before you install it:
 
 ```bash
 npx @sinouw/agent-preflight scan @scope/some-mcp-server@1.4.0
@@ -45,12 +97,12 @@ npx @sinouw/agent-preflight lock ./my-mcp-server
 npx @sinouw/agent-preflight verify ./my-mcp-server
 ```
 
-The installed binary is also available as `preflight`.
+With a global install, use `preflight` in place of `npx @sinouw/agent-preflight`.
 
 ## Sample output
 
 ```text
-agent-preflight v0.1.0  target: fixtures/malicious/poisoned-mcp-ts
+agent-preflight v0.1.1  target: fixtures/malicious/poisoned-mcp-ts
   scanned 2 file(s), 2 definition(s), 32 rule(s)
 
  CRITICAL  4 finding(s)
@@ -90,41 +142,43 @@ Summary: 15 finding(s) (4 critical, 8 high, 2 medium, 1 low)
 
 ## Rules
 
-| `PF-INJ-001` | metadata | critical | Instruction-override phrase |
-| `PF-INJ-002` | metadata | critical | Concealment instruction |
-| `PF-INJ-003` | metadata | high | Forced call ordering or precedence claim |
-| `PF-INJ-004` | metadata | high | System-prompt impersonation markup |
-| `PF-LEN-001` | metadata | low | Unusually long tool or parameter description |
-| `PF-OBF-001` | metadata | medium | Encoded blob in metadata |
-| `PF-PRM-001` | metadata | medium | Suspicious parameter name |
-| `PF-PRM-002` | metadata | high | Metadata requests conversation, system prompt or secrets |
-| `PF-SHD-001` | metadata | high | Tool shadowing instruction |
-| `PF-SHD-002` | metadata | medium | Description references another tool |
-| `PF-UNI-001` | metadata | high | Zero-width or invisible characters |
-| `PF-UNI-002` | metadata | critical | Bidirectional control characters |
-| `PF-UNI-003` | metadata | critical | Unicode tag characters |
-| `PF-UNI-004` | metadata | high | Variation-selector smuggling |
-| `PF-URL-001` | metadata | medium | URL, webhook or IP address in tool metadata |
-| `PF-URL-002` | metadata | high | Known exfiltration or tunnelling service |
-| `PF-SRC-001` | source | high | Access to credentials or sensitive local files |
-| `PF-SRC-002` | source | low | Outbound request to a hardcoded host |
-| `PF-SRC-003` | source | critical | Secret collection combined with outbound request |
-| `PF-SRC-004` | source | high | Dynamic code evaluation |
-| `PF-SRC-005` | source | high | Shell command built from dynamic input |
-| `PF-SRC-006` | source | critical | Download piped into an interpreter |
-| `PF-SRC-007` | source | high | Decoded payload executed |
-| `PF-URL-003` | source | medium | Hardcoded IP-address URL |
-| `PF-HOOK-001` | config | high | Hook sends data over the network |
-| `PF-HOOK-002` | config | high | Hook pipes into a shell or evaluates code |
-| `PF-MCP-001` | config | low | Unpinned package in MCP server command |
-| `PF-MCP-002` | config | medium | Remote MCP server over plain HTTP |
-| `PF-PKG-001` | config | medium | Install-time lifecycle script |
-| `PF-DRIFT-001` | drift | high | Definition changed since lock |
-| `PF-DRIFT-002` | drift | medium | Definition added since lock |
-| `PF-DRIFT-003` | drift | low | Definition removed since lock |
+| ID             | Layer    | Severity | Title                                                    |
+| -------------- | -------- | -------- | -------------------------------------------------------- |
+| `PF-INJ-001`   | metadata | critical | Instruction-override phrase                              |
+| `PF-INJ-002`   | metadata | critical | Concealment instruction                                  |
+| `PF-INJ-003`   | metadata | high     | Forced call ordering or precedence claim                 |
+| `PF-INJ-004`   | metadata | high     | System-prompt impersonation markup                       |
+| `PF-LEN-001`   | metadata | low      | Unusually long tool or parameter description             |
+| `PF-OBF-001`   | metadata | medium   | Encoded blob in metadata                                 |
+| `PF-PRM-001`   | metadata | medium   | Suspicious parameter name                                |
+| `PF-PRM-002`   | metadata | high     | Metadata requests conversation, system prompt or secrets |
+| `PF-SHD-001`   | metadata | high     | Tool shadowing instruction                               |
+| `PF-SHD-002`   | metadata | medium   | Description references another tool                      |
+| `PF-UNI-001`   | metadata | high     | Zero-width or invisible characters                       |
+| `PF-UNI-002`   | metadata | critical | Bidirectional control characters                         |
+| `PF-UNI-003`   | metadata | critical | Unicode tag characters                                   |
+| `PF-UNI-004`   | metadata | high     | Variation-selector smuggling                             |
+| `PF-URL-001`   | metadata | medium   | URL, webhook or IP address in tool metadata              |
+| `PF-URL-002`   | metadata | high     | Known exfiltration or tunnelling service                 |
+| `PF-SRC-001`   | source   | high     | Access to credentials or sensitive local files           |
+| `PF-SRC-002`   | source   | low      | Outbound request to a hardcoded host                     |
+| `PF-SRC-003`   | source   | critical | Secret collection combined with outbound request         |
+| `PF-SRC-004`   | source   | high     | Dynamic code evaluation                                  |
+| `PF-SRC-005`   | source   | high     | Shell command built from dynamic input                   |
+| `PF-SRC-006`   | source   | critical | Download piped into an interpreter                       |
+| `PF-SRC-007`   | source   | high     | Decoded payload executed                                 |
+| `PF-URL-003`   | source   | medium   | Hardcoded IP-address URL                                 |
+| `PF-HOOK-001`  | config   | high     | Hook sends data over the network                         |
+| `PF-HOOK-002`  | config   | high     | Hook pipes into a shell or evaluates code                |
+| `PF-MCP-001`   | config   | low      | Unpinned package in MCP server command                   |
+| `PF-MCP-002`   | config   | medium   | Remote MCP server over plain HTTP                        |
+| `PF-PKG-001`   | config   | medium   | Install-time lifecycle script                            |
+| `PF-DRIFT-001` | drift    | high     | Definition changed since lock                            |
+| `PF-DRIFT-002` | drift    | medium   | Definition added since lock                              |
+| `PF-DRIFT-003` | drift    | low      | Definition removed since lock                            |
 
 `preflight rules` lists the loaded rules; `--rules <dir>` adds a pack (repeatable) and a rule
-with an existing id overrides the built-in one. See [docs/writing-rules.md](docs/writing-rules.md).
+with an existing id overrides the built-in one. See [docs/writing-rules.md](https://github.com/sinouw/agent-preflight/blob/main/docs/writing-rules.md).
 
 ## Output and exit codes
 
@@ -163,7 +217,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v4
-  - uses: sinouw/agent-preflight@v0.1.0
+  - uses: sinouw/agent-preflight@v0.1.1
     with:
       target: .
       fail-on: high
@@ -174,7 +228,23 @@ Findings appear in the job log and, through SARIF, in the repository's Security 
 `target`, `fail-on`, `min-severity`, `rules`, `locked`, `sarif-file`, `upload-sarif`,
 `category`. Uploading SARIF from a private repository requires GitHub Advanced Security; set
 `upload-sarif: false` otherwise. A complete workflow is in
-[examples/preflight.yml](examples/preflight.yml).
+[examples/preflight.yml](https://github.com/sinouw/agent-preflight/blob/main/examples/preflight.yml).
+
+## Library usage
+
+The package also exports the scanner as an ES module:
+
+```ts
+import { runScan, formatSarif } from '@sinouw/agent-preflight';
+
+const { result } = await runScan({ target: './my-mcp-server' });
+for (const f of result.findings) {
+  console.log(`${f.severity} ${f.ruleId} ${f.file}:${f.line} ${f.title}`);
+}
+```
+
+`formatPretty`, `formatJson` and `formatSarif` render a result; `buildLock`, `writeLock` and
+`compareLock` handle lockfiles. Types are included.
 
 ## How it compares
 
@@ -218,9 +288,9 @@ assembled at runtime that static extraction cannot see.
 
 ## Contributing and security
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Report vulnerabilities privately as described in
-[SECURITY.md](SECURITY.md).
+See [CONTRIBUTING.md](https://github.com/sinouw/agent-preflight/blob/main/CONTRIBUTING.md). Report vulnerabilities privately as described in
+[SECURITY.md](https://github.com/sinouw/agent-preflight/blob/main/SECURITY.md).
 
 ## License
 
-[MIT](LICENSE)
+[MIT](https://github.com/sinouw/agent-preflight/blob/main/LICENSE)

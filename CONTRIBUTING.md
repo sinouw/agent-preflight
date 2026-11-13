@@ -55,3 +55,12 @@ that touches `src/inputs/` gets extra review for this.
 - Keep PRs focused; one rule or one feature per PR is ideal.
 - `npm run lint && npm run typecheck && npm test && npm run build` must pass.
 - Describe false-positive risk for new rules in the PR description.
+
+## Releasing (maintainers)
+
+1. Bump `version` in `package.json` (`npm version patch --no-git-tag-version`) and add a
+   `## [x.y.z] - date` section to `CHANGELOG.md`.
+2. Merge to `main`, then tag and push: `git tag vx.y.z && git push origin vx.y.z`.
+3. The [release workflow](.github/workflows/release.yml) checks the tag matches
+   `package.json`, runs the full test suite, publishes to npm through trusted publishing (with
+   provenance) and creates the GitHub release from the changelog section.

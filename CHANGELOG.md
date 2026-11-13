@@ -6,6 +6,31 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-13
+
+### Changed
+
+- Published to npm as `@sinouw/agent-preflight`; the registry rejected the unscoped name as too
+  similar to an existing package. The `preflight` and `agent-preflight` commands and the
+  GitHub Action are unchanged.
+- README: badges, install options, library usage, a working rules table and absolute links
+  so it renders on npmjs.com.
+
+### Fixed
+
+- `preflight --version` printed `0.0.0` after the package rename.
+
+### Security
+
+- Dev-only: pinned `minimatch` to 11.x for `typescript-eslint` (GHSA-g3hv-75wg-m249). The
+  published package was not affected.
+
+### Added
+
+- Release workflow: pushing a `v*.*.*` tag publishes to npm with trusted publishing and
+  provenance, and creates the GitHub release.
+- Dependabot for npm and GitHub Actions.
+
 ## [0.1.0] - 2026-11-13
 
 ### Added

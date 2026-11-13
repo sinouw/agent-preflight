@@ -1,6 +1,6 @@
 {
   "name": "@sinouw/agent-preflight",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Scan MCP servers and Claude Code plugins, skills and hooks for tool poisoning, hidden instructions and data exfiltration before you install them.",
   "license": "MIT",
   "type": "module",
@@ -37,7 +37,15 @@
     "prompt-injection",
     "tool-poisoning",
     "claude-code",
-    "sarif"
+    "sarif",
+    "ai-security",
+    "llm-security",
+    "ai-agents",
+    "mcp-server",
+    "supply-chain-security",
+    "static-analysis",
+    "github-action",
+    "cli"
   ],
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json && chmod +x dist/cli.js",
@@ -45,7 +53,8 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "commander": "^14.0.3",
@@ -71,5 +80,15 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "overrides": {
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.1"
+    }
+  },
+  "homepage": "https://github.com/sinouw/agent-preflight#readme",
+  "bugs": {
+    "url": "https://github.com/sinouw/agent-preflight/issues"
+  },
+  "author": "Yassine El Ouni (https://github.com/sinouw)"
 }
