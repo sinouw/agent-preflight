@@ -16,15 +16,15 @@ text, reaches for your credentials or phones home, before any of it runs on your
 Node 20 or newer.
 
 ```bash
-npx agent-preflight scan ./my-mcp-server
+npx @sinouw/agent-preflight scan ./my-mcp-server
 ```
 
 ```bash
-npx agent-preflight scan https://github.com/owner/repo
+npx @sinouw/agent-preflight scan https://github.com/owner/repo
 ```
 
 ```bash
-npx agent-preflight scan @scope/some-mcp-server@1.4.0
+npx @sinouw/agent-preflight scan @scope/some-mcp-server@1.4.0
 ```
 
 Check everything already configured on this machine (Claude Desktop, Claude Code and Cursor
@@ -32,17 +32,17 @@ MCP configs, plus installed plugins, skills, agents, commands and hooks). Discov
 read-only and MCP `env` values are never printed:
 
 ```bash
-npx agent-preflight scan --installed
+npx @sinouw/agent-preflight scan --installed
 ```
 
 Pin definitions and catch rug pulls later:
 
 ```bash
-npx agent-preflight lock ./my-mcp-server
+npx @sinouw/agent-preflight lock ./my-mcp-server
 ```
 
 ```bash
-npx agent-preflight verify ./my-mcp-server
+npx @sinouw/agent-preflight verify ./my-mcp-server
 ```
 
 The installed binary is also available as `preflight`.

@@ -1,5 +1,5 @@
 {
-  "name": "agent-preflight",
+  "name": "@sinouw/agent-preflight",
   "version": "0.1.0",
   "description": "Scan MCP servers and Claude Code plugins, skills and hooks for tool poisoning, hidden instructions and data exfiltration before you install them.",
   "license": "MIT",
@@ -68,5 +68,8 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.72.2",
     "vitest": "^4.1.12"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
